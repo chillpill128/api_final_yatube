@@ -52,17 +52,18 @@ class GroupSerializer(serializers.ModelSerializer):
 
 
 class FollowSerializer(serializers.ModelSerializer):
-    following = serializers.CharField()
+    following = serializers.SlugRelatedField(
+        queryset=User.objects.all(), slug_field='username')
     user = serializers.StringRelatedField(read_only=True)
 
     class Meta:
         fields = '__all__'
         model = Follow
 
-    def validate(self, data):
-        following = get_object_or_404(User, username=data['following'])
+    def validate_following(self, value):
         user = self.context['request'].user
-        if user == following or Follow.objects.filter(
-                following=following, user=user).exists():
-            raise serializers.ValidationError("Not Valid")
-        return data
+        if user == value:
+            raise serializers.ValidationError("Нельзя подписаться на самого себя.")
+        if Follow.objects.filter(user=user, following=value).exists():
+            raise serializers.ValidationError("Вы уже подписаны на этого пользователя.")
+        return value
